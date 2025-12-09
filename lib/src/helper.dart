@@ -93,7 +93,7 @@ class TheResponsiveHelper {
     double scaleFactor = min(horizontalScaling, verticalScaling);
     
     // Ensure the scale factor doesn't exceed 1.0
-    scaleFactor = min(scaleFactor, 1);
+    scaleFactor = min(scaleFactor, 1.4);
     
     return size * scaleFactor * (enableScaleFactor ? textScaleFactor : 1);
   }
