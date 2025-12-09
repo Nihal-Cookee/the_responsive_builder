@@ -22,8 +22,8 @@ class TheResponsiveHelper {
   static bool enableScaleFactor = true;
 
   /// Get scaling factors for width and height compared to the baseline.
-  static double get horizontalScaling => min(width / baselineWidth, 1.4);
-  static double get verticalScaling => min(height / baselineHeight, 1.7);
+  static double get horizontalScaling => width / baselineWidth;
+  static double get verticalScaling => height / baselineHeight;
 
   static bool get enableTextScaleFactor => enableScaleFactor;
 
@@ -93,7 +93,7 @@ class TheResponsiveHelper {
     double scaleFactor = min(horizontalScaling, verticalScaling);
     
     // Ensure the scale factor doesn't exceed 1.0
-    scaleFactor = min(scaleFactor, 1.4);
+    scaleFactor = scaleFactor;
     
     return size * scaleFactor * (enableScaleFactor ? textScaleFactor : 1);
   }
