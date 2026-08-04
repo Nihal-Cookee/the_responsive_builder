@@ -58,6 +58,45 @@ void main() {
     expect(landscapeScreenType, ScreenType.mobile);
   });
 
+  testWidgets('adaptive spacing and text stay stable when a phone rotates',
+      (tester) async {
+    double? portraitDp;
+    double? portraitSp;
+    double? landscapeDp;
+    double? landscapeSp;
+
+    await pumpResponsiveApp(
+      tester,
+      size: const Size(376, 812),
+      child: TheResponsiveBuilder(
+        baselineWidth: 376,
+        baselineHeight: 812,
+        builder: (context, orientation, screenType) {
+          portraitDp = 16.dp;
+          portraitSp = 16.sp;
+          return const SizedBox.shrink();
+        },
+      ),
+    );
+
+    await pumpResponsiveApp(
+      tester,
+      size: const Size(812, 376),
+      child: TheResponsiveBuilder(
+        baselineWidth: 376,
+        baselineHeight: 812,
+        builder: (context, orientation, screenType) {
+          landscapeDp = 16.dp;
+          landscapeSp = 16.sp;
+          return const SizedBox.shrink();
+        },
+      ),
+    );
+
+    expect(landscapeDp, portraitDp);
+    expect(landscapeSp, portraitSp);
+  });
+
   testWidgets('nested builders use the real screen size for classification',
       (tester) async {
     ScreenType? outerScreenType;

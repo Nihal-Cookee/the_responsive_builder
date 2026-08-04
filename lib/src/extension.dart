@@ -17,9 +17,8 @@ extension TheResponsiveExtension on num {
   /// Returns the adaptive density pixel. This calculation uses the scale factors
   /// from TheResponsiveHelper to provide consistency with other responsive elements.
   double get dp {
-    // Use the minimum of horizontal and vertical scaling to ensure consistency
-    double scaleFactor = math.min(TheResponsiveHelper.horizontalScaling,
-        TheResponsiveHelper.verticalScaling);
+    // Use a rotation-safe scale so landscape does not suddenly shrink spacing.
+    final double scaleFactor = TheResponsiveHelper.adaptiveScale;
 
     // Apply the scaling factor with a slight dampening effect
     return (this * math.pow(scaleFactor, 0.5)).round().toDouble();

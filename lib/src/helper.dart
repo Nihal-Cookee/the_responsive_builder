@@ -12,6 +12,8 @@ enum ScreenType { mobile, tablet }
 enum ScreenSizeTier { mobile, tablet, desktop }
 
 class TheResponsiveHelper {
+  static FlutterView? _activeView;
+
   static FlutterView _resolveView(BuildContext context) {
     return View.maybeOf(context) ??
         WidgetsBinding.instance.platformDispatcher.implicitView ??
@@ -53,9 +55,22 @@ class TheResponsiveHelper {
 
   static bool enableScaleFactor = true;
 
-  /// Get scaling factors for width and height compared to the baseline.
+  /// Get scaling factors for the live width and height compared to the baseline.
   static double get horizontalScaling => width / baselineWidth;
   static double get verticalScaling => height / baselineHeight;
+
+  /// Rotation-safe scaling derived from the device short/long sides.
+  static double get shortestSide => min(width, height);
+  static double get longestSide => max(width, height);
+  static double get baselineShortestSide => min(baselineWidth, baselineHeight);
+  static double get baselineLongestSide => max(baselineWidth, baselineHeight);
+  static double get shortestSideScaling =>
+      shortestSide / baselineShortestSide;
+  static double get longestSideScaling => longestSide / baselineLongestSide;
+
+  /// A stable scale factor for paddings and text that should not shrink on rotation.
+  static double get adaptiveScale =>
+      min(shortestSideScaling, longestSideScaling);
 
   static bool get enableTextScaleFactor => enableScaleFactor;
 
@@ -64,7 +79,10 @@ class TheResponsiveHelper {
 
   /// Get the device's pixel density.
   static double get devicePixelRatio =>
-      WidgetsBinding.instance.platformDispatcher.views.first.devicePixelRatio;
+      (_activeView ??
+              WidgetsBinding.instance.platformDispatcher.implicitView ??
+              WidgetsBinding.instance.platformDispatcher.views.first)
+          .devicePixelRatio;
 
   /// Calculate screen density using devicePixelRatio and aspectRatio.
   static double get screenDensity => devicePixelRatio * aspectRatio;
@@ -85,6 +103,7 @@ class TheResponsiveHelper {
     required double baseHeight,
   }) {
     final FlutterView view = _resolveView(context);
+    _activeView = view;
     final MediaQueryData? mediaQuery = MediaQuery.maybeOf(context);
     final Size screenSize = mediaQuery?.size ?? _logicalSizeForView(view);
     final Orientation resolvedOrientation =
@@ -122,6 +141,9 @@ class TheResponsiveHelper {
       debugPrint("Device Pixel Ratio : $devicePixelRatio");
       debugPrint("Horizontal scaling : $horizontalScaling");
       debugPrint("Vertical scaling : $verticalScaling");
+      debugPrint("Shortest side scaling : $shortestSideScaling");
+      debugPrint("Longest side scaling : $longestSideScaling");
+      debugPrint("Adaptive scale : $adaptiveScale");
       debugPrint("Screen Density : $screenDensity");
       debugPrint("Screen Aspect Ratio : $aspectRatio");
       debugPrint("Baseline Width : $baselineWidth");
@@ -142,7 +164,7 @@ class TheResponsiveHelper {
   //       (enableScaleFactor ? textScaleFactor : 1);
   // }
   static double scaledTextSize(double size) {
-    final double scaleFactor = min(horizontalScaling, verticalScaling).clamp(
+    final double scaleFactor = adaptiveScale.clamp(
       0.0,
       1.0,
     );
