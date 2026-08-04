@@ -12,12 +12,23 @@ enum ScreenType { mobile, tablet }
 enum ScreenSizeTier { mobile, tablet, desktop }
 
 class TheResponsiveHelper {
-  static final FlutterView _view =
-      WidgetsBinding.instance.platformDispatcher.views.first;
-  static final Size _fallbackLogicalSize = Size(
-    _view.physicalSize.width / _view.devicePixelRatio,
-    _view.physicalSize.height / _view.devicePixelRatio,
-  );
+  static FlutterView _resolveView(BuildContext context) {
+    return View.maybeOf(context) ??
+        WidgetsBinding.instance.platformDispatcher.implicitView ??
+        WidgetsBinding.instance.platformDispatcher.views.first;
+  }
+
+  static Size _logicalSizeForView(FlutterView view) {
+    return Size(
+      view.physicalSize.width / view.devicePixelRatio,
+      view.physicalSize.height / view.devicePixelRatio,
+    );
+  }
+
+  static Size get _fallbackLogicalSize => _logicalSizeForView(
+        WidgetsBinding.instance.platformDispatcher.implicitView ??
+            WidgetsBinding.instance.platformDispatcher.views.first,
+      );
 
   /// These properties define the size and characteristics of the current screen.
   static BoxConstraints boxConstraints = const BoxConstraints();
@@ -73,8 +84,9 @@ class TheResponsiveHelper {
     required double baseWidth,
     required double baseHeight,
   }) {
+    final FlutterView view = _resolveView(context);
     final MediaQueryData? mediaQuery = MediaQuery.maybeOf(context);
-    final Size screenSize = mediaQuery?.size ?? _fallbackLogicalSize;
+    final Size screenSize = mediaQuery?.size ?? _logicalSizeForView(view);
     final Orientation resolvedOrientation =
         mediaQuery?.orientation ??
         (screenSize.width >= screenSize.height
