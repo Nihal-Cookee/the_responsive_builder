@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,17 +8,37 @@ import 'package:the_responsive_builder/the_responsive_builder.dart';
 /// Enumeration to define the two types of screen sizes we want to cater to.
 enum ScreenType { mobile, tablet }
 
+/// Enumeration to define screen sizes when desktop layouts are needed.
+enum ScreenSizeTier { mobile, tablet, desktop }
+
 class TheResponsiveHelper {
+  static final FlutterView _view =
+      WidgetsBinding.instance.platformDispatcher.views.first;
+  static final Size _fallbackLogicalSize = Size(
+    _view.physicalSize.width / _view.devicePixelRatio,
+    _view.physicalSize.height / _view.devicePixelRatio,
+  );
+
   /// These properties define the size and characteristics of the current screen.
-  static late BoxConstraints boxConstraints;
-  static late Orientation orientation;
-  static late ScreenType screenType;
-  static late double height;
-  static late double width;
+  static BoxConstraints boxConstraints = const BoxConstraints();
+  static Orientation orientation =
+      _fallbackLogicalSize.width >= _fallbackLogicalSize.height
+          ? Orientation.landscape
+          : Orientation.portrait;
+  static ScreenType screenType =
+      _fallbackLogicalSize.shortestSide < 600
+          ? ScreenType.mobile
+          : ScreenType.tablet;
+  static ScreenSizeTier screenSizeTier =
+      _fallbackLogicalSize.shortestSide < 600
+          ? ScreenSizeTier.mobile
+          : ScreenSizeTier.tablet;
+  static double height = _fallbackLogicalSize.height;
+  static double width = _fallbackLogicalSize.width;
 
   /// Reference baseline values for width and height.
-  static late double baselineWidth;
-  static late double baselineHeight;
+  static double baselineWidth = 375.0;
+  static double baselineHeight = 667.0;
 
   static bool enableScaleFactor = true;
 
@@ -43,44 +64,63 @@ class TheResponsiveHelper {
 
   /// Determine the type of screen (mobile or tablet) based on width, height, and orientation.
   static void setScreenSize({
+    required BuildContext context,
     required BoxConstraints constraints,
-    required Orientation currentOrientation,
     required double mobileBreakpoint,
+    required double desktopBreakpoint,
+    required bool enableDesktopMode,
     required bool enableTextScaleFactor,
     required double baseWidth,
     required double baseHeight,
   }) {
+    final MediaQueryData? mediaQuery = MediaQuery.maybeOf(context);
+    final Size screenSize = mediaQuery?.size ?? _fallbackLogicalSize;
+    final Orientation resolvedOrientation =
+        mediaQuery?.orientation ??
+        (screenSize.width >= screenSize.height
+            ? Orientation.landscape
+            : Orientation.portrait);
 
     boxConstraints = constraints;
-    orientation = currentOrientation;
+    orientation = resolvedOrientation;
     enableScaleFactor = enableTextScaleFactor;
     baselineWidth = baseWidth;
     baselineHeight = baseHeight;
-    width = boxConstraints.maxWidth;
-    height = boxConstraints.maxHeight;
+    width = screenSize.width;
+    height = screenSize.height;
+    final double shortestSide = screenSize.shortestSide;
 
-    if ((orientation == Orientation.portrait && width < mobileBreakpoint) ||
-        (orientation == Orientation.landscape && height < mobileBreakpoint)) {
+    if (shortestSide < mobileBreakpoint) {
+      screenSizeTier = ScreenSizeTier.mobile;
       screenType = ScreenType.mobile;
+    } else if (enableDesktopMode && shortestSide >= desktopBreakpoint) {
+      screenSizeTier = ScreenSizeTier.desktop;
+      // Preserve the legacy API contract for older applications.
+      screenType = ScreenType.tablet;
     } else {
+      screenSizeTier = ScreenSizeTier.tablet;
       screenType = ScreenType.tablet;
     }
 
-    debugPrint("=============================================");
-    debugPrint("         The Responsive Builder              ");
-    debugPrint("=============================================");
-    debugPrint("Scale Factor : $textScaleFactor");
-    debugPrint("Device Pixel Ratio : $devicePixelRatio");
-    debugPrint("Horizontal scaling : $horizontalScaling");
-    debugPrint("Vertical scaling : $verticalScaling");
-    debugPrint("Screen Density : $screenDensity");
-    debugPrint("Screen Aspect Ratio : $aspectRatio");
-    debugPrint("Baseline Width : $baselineWidth");
-    debugPrint("Baseline Height : $baselineHeight");
-    debugPrint("Screen Width : $width");
-    debugPrint("Screen Height : $height");
-    debugPrint("Screen Type : $screenType");
-    debugPrint("=============================================");
+    assert(() {
+      debugPrint("=============================================");
+      debugPrint("         The Responsive Builder              ");
+      debugPrint("=============================================");
+      debugPrint("Scale Factor : $textScaleFactor");
+      debugPrint("Device Pixel Ratio : $devicePixelRatio");
+      debugPrint("Horizontal scaling : $horizontalScaling");
+      debugPrint("Vertical scaling : $verticalScaling");
+      debugPrint("Screen Density : $screenDensity");
+      debugPrint("Screen Aspect Ratio : $aspectRatio");
+      debugPrint("Baseline Width : $baselineWidth");
+      debugPrint("Baseline Height : $baselineHeight");
+      debugPrint("Screen Width : $width");
+      debugPrint("Screen Height : $height");
+      debugPrint("Screen Type : $screenType");
+      debugPrint("Screen Size Tier : $screenSizeTier");
+      debugPrint("=============================================");
+      return true;
+    }());
   }
 
   /// Calculate the text size scaled based on the horizontal scaling factor and user's text preferences.
@@ -90,11 +130,11 @@ class TheResponsiveHelper {
   //       (enableScaleFactor ? textScaleFactor : 1);
   // }
   static double scaledTextSize(double size) {
-    double scaleFactor = min(horizontalScaling, verticalScaling);
-    
-    // Ensure the scale factor doesn't exceed 1.0
-    scaleFactor = scaleFactor;
-    
+    final double scaleFactor = min(horizontalScaling, verticalScaling).clamp(
+      0.0,
+      1.0,
+    );
+
     return size * scaleFactor * (enableScaleFactor ? textScaleFactor : 1);
   }
 

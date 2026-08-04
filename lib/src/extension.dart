@@ -27,7 +27,7 @@ extension TheResponsiveExtension on num {
 
   /// Returns the adaptive scalable pixel for text. This takes the 'dp' value and scales it
   /// using the textScaleFactor, which respects the user's font size settings.
-  double get sp => TheResponsiveHelper.scaledTextSize(double.parse('$this'));
+  double get sp => TheResponsiveHelper.scaledTextSize(toDouble());
 }
 
 /// This extension is added to the 'BuildContext' to provide easy access to properties
@@ -35,6 +35,9 @@ extension TheResponsiveExtension on num {
 extension TheResponsiveScreenTypeExtension on BuildContext {
   /// Provides a quick way to get the current screen type (mobile or tablet) using the ResponsiveHelper.
   ScreenType get screenType => TheResponsiveHelper.screenType;
+
+  /// Provides the current size tier, including desktop when enabled.
+  ScreenSizeTier get screenSizeTier => TheResponsiveHelper.screenSizeTier;
 
   /// Provides a quick way to get the current orientation (portrait or landscape) using the ResponsiveHelper.
   Orientation get orientation => TheResponsiveHelper.orientation;

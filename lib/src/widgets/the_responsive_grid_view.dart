@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
@@ -115,15 +117,21 @@ class TheResponsiveGridView extends StatelessWidget {
           // If columnCount is provided, use it directly
           effectiveColumnCount = columnCount!;
           // Calculate spacing based on fixed column count
-          actualSpacing = (availableWidth - (childWidth * effectiveColumnCount)) / (effectiveColumnCount + 1);
+          actualSpacing = (availableWidth - (childWidth * effectiveColumnCount)) /
+              (effectiveColumnCount + 1);
         } else {
           // Calculate the number of columns that can fit in the available width
-          effectiveColumnCount = ((availableWidth + minSpacing) / (childWidth + minSpacing)).floor();
+          effectiveColumnCount =
+              ((availableWidth + minSpacing) / (childWidth + minSpacing))
+                  .floor();
           // Ensure at least one column
           effectiveColumnCount = effectiveColumnCount > 0 ? effectiveColumnCount : 1;
           // Calculate the actual spacing between items to distribute remaining space evenly
-          actualSpacing = (availableWidth - (childWidth * effectiveColumnCount)) / (effectiveColumnCount + 1);
+          actualSpacing = (availableWidth - (childWidth * effectiveColumnCount)) /
+              (effectiveColumnCount + 1);
         }
+
+        actualSpacing = math.max(0, actualSpacing);
 
         // Calculate the aspect ratio of each child to maintain dimensions
         double childAspectRatio = childWidth / childHeight;
@@ -132,8 +140,8 @@ class TheResponsiveGridView extends StatelessWidget {
         final SliverGridDelegate gridDelegate = SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: effectiveColumnCount,
           childAspectRatio: childAspectRatio,
-          crossAxisSpacing: minSpacing,
-          mainAxisSpacing: minSpacing,
+          crossAxisSpacing: actualSpacing,
+          mainAxisSpacing: actualSpacing,
         );
 
         // Build the appropriate GridView based on the provided constructor
