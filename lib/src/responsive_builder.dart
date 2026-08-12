@@ -39,13 +39,13 @@ class TheResponsiveBuilder extends StatefulWidget {
   final double mobileBreakPoint;
   final double desktopBreakPoint;
 
-  /// How long to wait after the last viewport metrics change before forcing a
-  /// full remount of the responsive subtree.
+  /// How long to wait after the last viewport metrics change before treating
+  /// the rotation as settled and triggering a rebuild.
   ///
   /// Android/iOS report several transient intermediate sizes while a rotation
-  /// animation is in progress. Debouncing ensures we only react once the size
-  /// has settled, so no widget below can lock in a value from an
-  /// intermediate frame.
+  /// animation is in progress. Debouncing ensures we only rebuild once the
+  /// size has actually settled, so widgets that compute `.w`/`.h`/`.dp`
+  /// inline in build() always see the correct final value.
   final Duration metricsSettleDelay;
 
   @override
@@ -54,11 +54,6 @@ class TheResponsiveBuilder extends StatefulWidget {
 
 class _TheResponsiveBuilderState extends State<TheResponsiveBuilder>
     with WidgetsBindingObserver {
-  /// Bumped each time the viewport metrics settle, forcing the whole subtree
-  /// below the [LayoutBuilder] to be disposed and remounted so no [State]
-  /// object can survive holding a stale intermediate-frame size value.
-  int _generation = 0;
-
   Timer? _settleTimer;
   Size? _lastLogicalSize;
 
@@ -95,26 +90,28 @@ class _TheResponsiveBuilderState extends State<TheResponsiveBuilder>
     final Size? logicalSize = _currentLogicalSize();
     if (logicalSize == null) return;
     // Ignore metrics changes that do not change the actual view size (e.g.
-    // keyboard insets) so we only remount on real size changes like rotation.
+    // keyboard insets) so we only react to real size changes like rotation.
     if (logicalSize == _lastLogicalSize) return;
     _lastLogicalSize = logicalSize;
 
     _settleTimer?.cancel();
     _settleTimer = Timer(widget.metricsSettleDelay, () {
       if (!mounted) return;
-      setState(() {
-        _generation++;
-      });
+      // Plain rebuild only - deliberately NOT changing any Key here.
+      // Changing a Key on an ancestor of MaterialApp.router would force a
+      // full dispose+remount of the Navigator/Router below it (route stack,
+      // guards, redirects), which shows up as the whole app restarting from
+      // splash on every rotation. A normal setState is enough to make every
+      // widget that computes `.w`/`.h`/`.dp` inline in build() pick up the
+      // now-settled size.
+      setState(() {});
     });
   }
 
   @override
   Widget build(BuildContext context) {
     /// LayoutBuilder gives us access to the parent widget's constraints, like max and min width/height.
-    /// The [ValueKey] on [_generation] makes rotations force a full remount of
-    /// everything below, guaranteeing no stale cached size survives.
     return LayoutBuilder(
-      key: ValueKey<int>(_generation),
       builder: (context, constraints) {
         /// Before building the responsive UI, we set the screen size and orientation in our helper class.
         TheResponsiveHelper.setScreenSize(
