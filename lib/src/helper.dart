@@ -1,5 +1,5 @@
 import 'dart:math';
-import 'dart:ui';
+import 'dart:ui' show FlutterView, Size;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -13,6 +13,8 @@ enum ScreenSizeTier { mobile, tablet, desktop }
 
 class TheResponsiveHelper {
   static FlutterView? _activeView;
+  static double _resolvedTextScaleFactor =
+      WidgetsBinding.instance.platformDispatcher.textScaleFactor;
 
   static FlutterView _resolveView(BuildContext context) {
     return View.maybeOf(context) ??
@@ -88,8 +90,7 @@ class TheResponsiveHelper {
   static double get screenDensity => devicePixelRatio * aspectRatio;
 
   /// Get the text scale factor, considering user preferences.
-  static double get textScaleFactor =>
-      WidgetsBinding.instance.platformDispatcher.textScaleFactor;
+  static double get textScaleFactor => _resolvedTextScaleFactor;
 
   /// Determine the type of screen (mobile or tablet) based on width, height, and orientation.
   static void setScreenSize({
@@ -105,18 +106,20 @@ class TheResponsiveHelper {
     final FlutterView view = _resolveView(context);
     _activeView = view;
     final MediaQueryData? mediaQuery = MediaQuery.maybeOf(context);
-    final Size screenSize = mediaQuery?.size ?? _logicalSizeForView(view);
+    final Size screenSize = _logicalSizeForView(view);
     final Orientation resolvedOrientation =
-        mediaQuery?.orientation ??
-        (screenSize.width >= screenSize.height
+        screenSize.width >= screenSize.height
             ? Orientation.landscape
-            : Orientation.portrait);
+            : Orientation.portrait;
 
     boxConstraints = constraints;
     orientation = resolvedOrientation;
     enableScaleFactor = enableTextScaleFactor;
     baselineWidth = baseWidth;
     baselineHeight = baseHeight;
+    _resolvedTextScaleFactor =
+        mediaQuery?.textScaler.scale(1.0) ??
+        WidgetsBinding.instance.platformDispatcher.textScaleFactor;
     width = screenSize.width;
     height = screenSize.height;
     final double shortestSide = screenSize.shortestSide;

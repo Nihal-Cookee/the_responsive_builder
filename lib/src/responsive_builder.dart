@@ -54,6 +54,7 @@ class TheResponsiveBuilder extends StatefulWidget {
 
 class _TheResponsiveBuilderState extends State<TheResponsiveBuilder>
     with WidgetsBindingObserver {
+  final ValueNotifier<int> _metricsRevision = ValueNotifier<int>(0);
   Timer? _settleTimer;
   Size? _lastLogicalSize;
 
@@ -81,6 +82,7 @@ class _TheResponsiveBuilderState extends State<TheResponsiveBuilder>
   @override
   void dispose() {
     _settleTimer?.cancel();
+    _metricsRevision.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -97,42 +99,39 @@ class _TheResponsiveBuilderState extends State<TheResponsiveBuilder>
     _settleTimer?.cancel();
     _settleTimer = Timer(widget.metricsSettleDelay, () {
       if (!mounted) return;
-      // Plain rebuild only - deliberately NOT changing any Key here.
-      // Changing a Key on an ancestor of MaterialApp.router would force a
-      // full dispose+remount of the Navigator/Router below it (route stack,
-      // guards, redirects), which shows up as the whole app restarting from
-      // splash on every rotation. A normal setState is enough to make every
-      // widget that computes `.w`/`.h`/`.dp` inline in build() pick up the
-      // now-settled size.
-      setState(() {});
+      // Trigger a lightweight rebuild without remounting the subtree so
+      // responsive extensions recompute against the settled viewport.
+      _metricsRevision.value++;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    /// LayoutBuilder gives us access to the parent widget's constraints, like max and min width/height.
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        /// Before building the responsive UI, we set the screen size and orientation in our helper class.
-        TheResponsiveHelper.setScreenSize(
-          context: context,
-          constraints: constraints,
-          mobileBreakpoint: widget.mobileBreakPoint,
-          desktopBreakpoint: widget.desktopBreakPoint,
-          enableDesktopMode: widget.enableDesktopMode,
-          enableTextScaleFactor: widget.enableTextScaleFactor,
-          baseWidth: widget.baselineWidth,
-          baseHeight: widget.baselineHeight,
-        );
+    return ValueListenableBuilder<int>(
+      valueListenable: _metricsRevision,
+      builder: (context, _, __) => LayoutBuilder(
+        builder: (context, constraints) {
+          /// Before building the responsive UI, we set the screen size and orientation in our helper class.
+          TheResponsiveHelper.setScreenSize(
+            context: context,
+            constraints: constraints,
+            mobileBreakpoint: widget.mobileBreakPoint,
+            desktopBreakpoint: widget.desktopBreakPoint,
+            enableDesktopMode: widget.enableDesktopMode,
+            enableTextScaleFactor: widget.enableTextScaleFactor,
+            baseWidth: widget.baselineWidth,
+            baseHeight: widget.baselineHeight,
+          );
 
-        /// Now, using the provided builder function, we return the appropriate widget based on the current screen properties.
-        /// This builder function will likely contain the responsive logic, deciding how the UI should look based on the screen type.
-        return widget.builder(
-          context,
-          TheResponsiveHelper.orientation,
-          TheResponsiveHelper.screenType,
-        );
-      },
+          /// Now, using the provided builder function, we return the appropriate widget based on the current screen properties.
+          /// This builder function will likely contain the responsive logic, deciding how the UI should look based on the screen type.
+          return widget.builder(
+            context,
+            TheResponsiveHelper.orientation,
+            TheResponsiveHelper.screenType,
+          );
+        },
+      ),
     );
   }
 }
